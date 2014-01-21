@@ -44,27 +44,27 @@ How to use it :
     from cassastorage import PycassaStorage
     ...
 
-    ##create a systemManager
+    ///create a systemManager
     cassa_sys = SystemManager('localhost')
 
-    ##and a pool
+    //and a pool
     pool = ConnectionPool('keyspace',['localhost'])
 
-    ##And define a storage for whoosh 2.6
+    //And define a storage for whoosh 2.6
     storage = PycassaStorage("Whoosh", pool, cassa_sys=cassa_sys, keyspace='keyspace', readonly=False, supports_mmap=False)
 
-    ##Create it if needed
+    //Create it if needed
     storage.create()
 
-    ##Define a schema
+    //Define a schema
     schema = Schema(page=ID(stored=True,unique=True),
                 title=TEXT(stored=True),
                 content=TEXT,
                 tags=KEYWORD)
 
-    ##and create index if needed
+    //and create index if needed
     storage.create_index(schema)
-    ##And open it
+    //And open it
     idx=storage.open_index()
     ...
 
