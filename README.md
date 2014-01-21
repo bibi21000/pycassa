@@ -1,15 +1,16 @@
-pycassa extensions
-==================
+pycassa extensions for Flask, Whoosh, ...
+=========================================
 
 pycassa/cassandra backend for Flask sessions :
+----------------------------------------------
 
 How to use it :
 
-    - Copy this file in your project
+- Copy this file in your project
 
-    - Create the column_family in your 'keyspace': 'Sessions' (ie)
+- Create the column_family in your 'keyspace': 'Sessions' (ie)
 
-    - And use it :
+- And use it :
 
     from cassasession import PycassaSessionInterface
     ...
@@ -26,15 +27,16 @@ How to use it :
     #And define the session interface or your app
     app.session_interface = PycassaSessionInterface(session_family)
 
-    - That's all folk !!!
+- That's all folk !!!
 
 pycassa/cassandra backend for Whoosh :
+--------------------------------------
 
 How to use it :
 
-    - Copy this file in your project
+- Copy this file in your project
 
-    - And use it :
+- And use it :
 
     from cassastorage import PycassaStorage
     ...
@@ -63,5 +65,5 @@ How to use it :
     idx=storage.open_index()
     ...
 
-    - Update, search, ...
+- Update, search, ... your Whoosh index
 
