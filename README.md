@@ -60,7 +60,7 @@ How to use it :
 
     //And define a storage for whoosh 2.6
 
-    storage = PycassaStorage("Whoosh", pool, cassa_sys=cassa_sys, keyspace='keyspace', readonly=False, supports_mmap=False)
+    storage = PycassaStorage("Whoosh", pool, cassa_sys=cassa_sys, keyspace='keyspace', cache_dir="/tmp/whoosh-uniq", readonly=False, supports_mmap=False)
 
     //Create it if needed
 

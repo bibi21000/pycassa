@@ -17,7 +17,17 @@ __license__ = """
     along with BigD.  If not, see <http://www.gnu.org/licenses/>.
 
     Storage backend for Whoosh 2.6 using pycassa/cassandra
-    LIMITATION : only ONE writer is available
+
+    LIMITATIONS :
+        - only ONE writer is available. Got errors when trying 3. More tests are neeeded.
+        - is cassandra a good choice for whoosh ??? :
+            In logs :
+                WARN [ReadStage:80] 2014-01-23 00:21:12,910 SliceQueryFilter.java (line 209) Read 1 live and 3729 tombstoned cells (see tombstone_warn_threshold)
+                WARN [ReadStage:89] 2014-01-23 00:21:26,384 SliceQueryFilter.java (line 209) Read 1 live and 3730 tombstoned cells (see tombstone_warn_threshold)
+            Cassandra don't like creation/deletions. Seems that segment in Whoose use a lot of ...
+            Read : http://www.datastax.com/dev/blog/cassandra-anti-patterns-queues-and-queue-like-datasets
+
+
 
     Inspired from https://bitbucket.org/mtasic85/whoosh/src/c483499e015171ba40e200777f0ffa4325739cd7/src/whoosh/filedb/filestore.py?at=cassandra-2.4x
     Inspired from https://github.com/samuraisam/padlock/blob/master/padlock/distributed/cassandra.py
@@ -38,7 +48,7 @@ __license__ = """
     pool = ConnectionPool('keyspace',['localhost'])
 
     #And define a storage for whoosh 2.6
-    storage = PycassaStorage("Whoosh", pool, cassa_sys=cassa_sys, keyspace='keyspace', readonly=False, supports_mmap=False)
+    storage = PycassaStorage("Whoosh", pool, cassa_sys=cassa_sys, keyspace='keyspace', cache_dir="/tmp/whoosh-uniq", readonly=False, supports_mmap=False)
 
     #Create it if needed
     storage.create()
@@ -85,6 +95,7 @@ from whoosh.index import _DEF_INDEX_NAME, EmptyIndexError
 from whoosh.filedb.structfile import StructFile
 from whoosh.filedb.filestore import Storage, FileStorage
 from whoosh.util import random_name
+import logging
 
 _cf_args = [
     'read_consistency_level',
@@ -120,6 +131,13 @@ class RunOncePolicy(IRetryPolicy):
 
     def allow_retry(self):
         return False
+
+class RunOnceRetryManyPolicy(RunOncePolicy):
+    """
+    A RetryPolicy that runs only once but allows retry
+    """
+    def allow_retry(self):
+        return True
 
 class BusyLockException(Exception):
     """
@@ -202,7 +220,7 @@ class PycassaDistributedRowLock(object):
         * **timestamp**
     """
 
-    def __init__(self, pool, column_family, key, **kwargs):
+    def __init__(self, pool, column_family, key, backoff_policy=RunOncePolicy(), **kwargs):
         #print "Create PycassaDistributedRowLock instance"
         self.pool = pool
         if isinstance(column_family, ColumnFamily):
@@ -217,7 +235,7 @@ class PycassaDistributedRowLock(object):
         self.fail_on_stale_lock = kwargs.get('fail_on_stale_lock', False)
         self.timeout = kwargs.get('timeout', 60.0)  # seconds
         self.ttl = kwargs.get('ttl', None)
-        self.backoff_policy = RunOncePolicy()
+        self.backoff_policy = backoff_policy
         self.allow_retry = kwargs.get('allow_retry', True)
         self.locks_to_delete = set()
         self.lock_column = None
@@ -227,7 +245,7 @@ class PycassaDistributedRowLock(object):
         Acquire the lock on this row. It will then read immediatly from cassandra, potentially retrying, potentially
         sleeping the executing thread.
         """
-        print "acquire lock"
+        logging.debug("try to acquire lock")
         if self.ttl is not None:
             if self.timeout > self.ttl:
                 raise ValueError("Timeout {} must be less than TTL {}".format(self.timeout, self.ttl))
@@ -243,11 +261,14 @@ class PycassaDistributedRowLock(object):
                 mutation.send()
                 self.verify_lock(cur_time)
                 self.acquire_time = self.utcnow()
+                logging.debug( "lock acquired")
                 return True
             except BusyLockException, e:
+                logging.warning("lock failed")
                 self.release()
                 if not retry.allow_retry():
                     raise e
+                logging.warning("Retry #%s"%retry_count)
                 retry_count += 1
         return False
 
@@ -255,7 +276,7 @@ class PycassaDistributedRowLock(object):
         """
         Allow this row to be locked by something (or someone) else. Performs a single write (round trip) to Cassandra.
         """
-        print "release lock"
+        logging.debug( "release lock")
         if not len(self.locks_to_delete) or self.lock_column is not None:
             mutation = self.column_family.batch()
             self.fill_release_mutation(mutation, False)
@@ -274,7 +295,6 @@ class PycassaDistributedRowLock(object):
         """
         if self.lock_column is None:
             raise ValueError("verify_lock() called without attempting to take the lock")
-
         cols = self.read_lock_columns()
         for k, v in cols.iteritems():
             if v != 0 and cur_time > v:
@@ -537,7 +557,7 @@ class PycassaStorage(Storage):
         :param name: a name for the lock.
         :return: a lock-like object.
         """
-        return PycassaDistributedRowLock(pool=self.pool, column_family="%s_Locks" % self.path,key=name)
+        return PycassaDistributedRowLock(pool=self.pool, column_family="%s_Locks" % self.path,key=name, backoff_plicy=RunOnceRetryManyPolicy())
 
     def temp_storage(self, name=None):
         """Creates a new storage object for temporary files. You can call
