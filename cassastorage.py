@@ -27,8 +27,6 @@ __license__ = """
             Cassandra don't like creation/deletions. Seems that segment in Whoose use a lot of ...
             Read : http://www.datastax.com/dev/blog/cassandra-anti-patterns-queues-and-queue-like-datasets
 
-
-
     Inspired from https://bitbucket.org/mtasic85/whoosh/src/c483499e015171ba40e200777f0ffa4325739cd7/src/whoosh/filedb/filestore.py?at=cassandra-2.4x
     Inspired from https://github.com/samuraisam/padlock/blob/master/padlock/distributed/cassandra.py
 
