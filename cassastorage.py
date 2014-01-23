@@ -24,8 +24,10 @@ __license__ = """
             In logs :
                 WARN [ReadStage:80] 2014-01-23 00:21:12,910 SliceQueryFilter.java (line 209) Read 1 live and 3729 tombstoned cells (see tombstone_warn_threshold)
                 WARN [ReadStage:89] 2014-01-23 00:21:26,384 SliceQueryFilter.java (line 209) Read 1 live and 3730 tombstoned cells (see tombstone_warn_threshold)
-            Cassandra don't like creation/deletions. Seems that segment in Whoose use a lot of ...
+            Cassandra don't like creation/deletions. Seems that segments in Whoose use a lot of ...
             Read : http://www.datastax.com/dev/blog/cassandra-anti-patterns-queues-and-queue-like-datasets
+        - committing : merge or not, optimize ?
+            Actually I use : merge=False and Optimize=True every 75 updates
 
     Inspired from https://bitbucket.org/mtasic85/whoosh/src/c483499e015171ba40e200777f0ffa4325739cd7/src/whoosh/filedb/filestore.py?at=cassandra-2.4x
     Inspired from https://github.com/samuraisam/padlock/blob/master/padlock/distributed/cassandra.py
